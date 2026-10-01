@@ -1,7 +1,7 @@
 // The example's record server, end to end over HTTP: a real Loop in Node,
 // talking to the model through the server's proxy and logging through PostSink.
-import { mkdtempSync, readFileSync } from 'node:fs';
-import { createServer, type IncomingHttpHeaders, type Server } from 'node:http';
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { createServer, request, type IncomingHttpHeaders, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -11,7 +11,7 @@ import { createDemoAdapter, DEMO_OUTPUTS } from '../examples/shared/demo-adapter
 import { localBackend } from '../examples/shared/local-backend';
 import { PRESETS, presetItems } from '../examples/shared/presets';
 import { RecordStore } from '../examples/shared/record-store';
-import { startExampleServer, type ExampleServer } from '../examples/local-model/server';
+import { isLocalHost, startExampleServer, type ExampleServer } from '../examples/local-model/server';
 import { createOpenAICompatibleAdapter } from '../src/adapters/openai-compatible';
 import { Loop } from '../src/loop';
 import { PostSink } from '../src/sinks/post';
@@ -212,6 +212,125 @@ describe('example record server', () => {
     expect(reopened.get(loop.record!.record_id)!.status).toBe('outcome_pending');
     expect(reopened.pending()).toHaveLength(1);
     expect(reopened.tail(10).map((r) => r.status)).toEqual(['shown', 'chosen', 'outcome_pending']);
+  });
+});
+
+// The server is on loopback, so the caller to keep out is another web page in
+// the same browser. These send what such a page's requests would carry.
+describe('example server and other web pages', () => {
+  const shown = readFileSync(join(ROOT, 'fixtures/records/valid/shown.json'), 'utf8');
+  const chat = JSON.stringify({ model: 'test-model', messages: [{ role: 'user', content: 'x' }] });
+
+  async function setup() {
+    const started = await start({ apiKey: 'secret-key' });
+    const port = Number(new URL(started.server.url).port);
+    const raw = (method: string, path: string, headers: Record<string, string>, body?: string) =>
+      new Promise<{ status: number; body: string }>((resolve, reject) => {
+        const req = request({ host: '127.0.0.1', port, method, path, headers }, (res) => {
+          let text = '';
+          res.on('data', (chunk) => (text += chunk));
+          res.on('end', () => resolve({ status: res.statusCode!, body: text }));
+        });
+        req.on('error', reject);
+        req.end(body);
+      });
+    const own = `http://localhost:${port}`;
+    return { ...started, port, raw, own };
+  }
+
+  it('answers its own page, with the headers a browser sends', async () => {
+    const { raw, own, port, model } = await setup();
+    const page = { host: `localhost:${port}`, origin: own, 'sec-fetch-site': 'same-origin', 'content-type': 'application/json' };
+    expect((await raw('POST', '/records', page, shown)).status).toBe(204);
+    expect((await raw('POST', '/v1/chat/completions', page, chat)).status).toBe(200);
+    expect((await raw('GET', '/records?tail=5', { host: `127.0.0.1:${port}`, 'sec-fetch-site': 'same-origin' })).status).toBe(200);
+    expect(model.seen).toHaveLength(1);
+  });
+
+  it('refuses a form-style post from another site: no write, no model call, no clock change', async () => {
+    const { raw, port, model, get, recordsPath } = await setup();
+    const elsewhere = { host: `localhost:${port}`, origin: 'https://elsewhere.example', 'content-type': 'text/plain' };
+    expect((await raw('POST', '/records', elsewhere, shown)).status).toBe(403);
+    expect((await raw('POST', '/v1/chat/completions', elsewhere, chat)).status).toBe(403);
+    expect((await raw('POST', '/clock/advance', elsewhere, JSON.stringify({ ms: DAY }))).status).toBe(403);
+    expect((await raw('POST', '/check-ins/rec_1', elsewhere, JSON.stringify({ option_id: 'yes' }))).status).toBe(403);
+    expect(model.seen).toEqual([]);
+    expect((await get<{ offsetMs: number }>('/clock')).offsetMs).toBe(0);
+    expect(existsSync(recordsPath)).toBe(false);
+  });
+
+  it('refuses another site by Sec-Fetch-Site alone, and another local port', async () => {
+    const { raw, port, model } = await setup();
+    const host = `localhost:${port}`;
+    expect((await raw('GET', '/v1/models', { host, 'sec-fetch-site': 'cross-site' })).status).toBe(403);
+    expect((await raw('GET', '/records', { host, 'sec-fetch-site': 'same-site' })).status).toBe(403);
+    expect((await raw('POST', '/records', { host, origin: `http://localhost:${port + 1}`, 'content-type': 'application/json' }, shown)).status).toBe(403);
+    expect((await raw('POST', '/records', { host, origin: 'null', 'content-type': 'application/json' }, shown)).status).toBe(403);
+    expect(model.seen).toEqual([]);
+  });
+
+  it('refuses a body that is not sent as JSON, even from its own page', async () => {
+    const { raw, own, port, model } = await setup();
+    const page = { host: `localhost:${port}`, origin: own };
+    expect((await raw('POST', '/records', { ...page, 'content-type': 'text/plain' }, shown)).status).toBe(415);
+    expect((await raw('POST', '/records', page, shown)).status).toBe(415);
+    expect((await raw('POST', '/v1/chat/completions', { ...page, 'content-type': 'text/plain' }, chat)).status).toBe(415);
+    expect((await raw('DELETE', '/v1/models/test-model', page)).status).toBe(405);
+    expect(model.seen).toEqual([]);
+  });
+
+  it('refuses a name that is not this machine, which is how a rebound domain arrives', async () => {
+    const { raw, port, loop, input, model } = await setup();
+    await loop.compose(input);
+    const before = model.seen.length;
+    const rebound = { host: `elsewhere.example:${port}`, 'sec-fetch-site': 'same-origin' };
+    const read = await raw('GET', '/records?tail=50', rebound);
+    expect(read.status).toBe(403);
+    expect(read.body).not.toContain('record_id');
+    expect((await raw('GET', '/config', rebound)).status).toBe(403);
+    expect((await raw('POST', '/v1/chat/completions', { ...rebound, 'content-type': 'application/json' }, chat)).status).toBe(403);
+    expect((await raw('GET', '/', rebound)).status).toBe(403);
+    expect(model.seen).toHaveLength(before);
+  });
+
+  it('serves the app without opening the log file or the page to other origins', async () => {
+    // Inside the folder Vite serves, where the real log lives.
+    const recordsPath = join(ROOT, 'examples/local-model', `records.test-${process.pid}.jsonl`);
+    writeFileSync(recordsPath, `${shown.replace(/\n\s*/g, '')}\n`);
+    const server = await startExampleServer({ recordsPath, hypothesis, model: 'test-model', modelUrl: 'http://127.0.0.1:9', demo: true, vite: true });
+    cleanups.push(async () => rmSync(recordsPath, { force: true }), server.close);
+    const port = Number(new URL(server.url).port);
+    const host = `localhost:${port}`;
+    const page = (path: string, headers: Record<string, string>) =>
+      new Promise<{ status: number; headers: IncomingHttpHeaders }>((resolve, reject) => {
+        const req = request({ host: '127.0.0.1', port, path, headers }, (res) => {
+          res.resume();
+          res.on('end', () => resolve({ status: res.statusCode!, headers: res.headers }));
+        });
+        req.on('error', reject);
+        req.end();
+      });
+    const file = recordsPath.slice(recordsPath.lastIndexOf('/'));
+
+    expect((await page('/', { host })).status).toBe(200);
+    // A link to the app from another site is an ordinary visit.
+    expect((await page('/', { host, 'sec-fetch-site': 'cross-site', 'sec-fetch-mode': 'navigate' })).status).toBe(200);
+    expect((await page('/', { host: `elsewhere.example:${port}` })).status).toBe(403);
+    expect((await page(file, { host })).status).toBe(403);
+    expect((await page(`${file}?raw`, { host })).status).toBe(403);
+    expect((await page(`/@fs${recordsPath}`, { host })).status).toBe(403);
+    expect((await page('/records?tail=5', { host, 'sec-fetch-site': 'same-origin' })).status).toBe(200);
+    const fromOtherPort = await page('/src/main.tsx', { host, origin: 'http://localhost:9999' });
+    expect(fromOtherPort.status).toBe(200);
+    expect(fromOtherPort.headers['access-control-allow-origin']).toBeUndefined();
+  });
+
+  it('knows a local name on its own port from everything else', () => {
+    for (const host of ['localhost:5178', 'LOCALHOST:5178', '127.0.0.1:5178', '[::1]:5178']) expect(isLocalHost(host, 5178)).toBe(true);
+    for (const host of [undefined, '', 'localhost', 'localhost:5179', 'elsewhere.example:5178', 'localhost.elsewhere.example:5178', '127.0.0.1.nip.io:5178', '[::1]', '0.0.0.0:5178']) {
+      expect(isLocalHost(host, 5178)).toBe(false);
+    }
+    expect(isLocalHost('localhost', 80)).toBe(true);
   });
 });
 

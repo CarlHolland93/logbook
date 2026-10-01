@@ -26,6 +26,8 @@ One Node process on one port:
 - **The check-in scheduler**, which lists due check-ins at `GET /check-ins` and expires unanswered ones after twice `due_in` (SPEC §4). A real deployment would send a notification where this example shows a list.
 - **A proxy to the model** at `/v1/*`, so an API key stays on the server.
 
+The server listens on this machine only and answers only its own page. A request that asks for another host name, or that the browser marks as coming from another site, gets a 403, so a web page open in the same browser cannot read the log, write to it or use the key. Bodies must be sent as `application/json`.
+
 Leaving the page while a card is open logs it as abandoned.
 
 ## Settings

@@ -19,6 +19,11 @@ import { RecordStore } from '../shared/record-store';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const MAX_BODY = 1_000_000;
+const LOCAL_NAMES = new Set(['localhost', '127.0.0.1', '[::1]']);
+// Vite's own deny list (8.3), which setting fs.deny replaces rather than extends.
+const VITE_DENY = ['.env', '.env.*', '*.{crt,pem,key,p12,pfx,cer,der}', '.npmrc', '.yarnrc.yml', '**/.git/**'];
+// Every path api() answers. A route missing from here is never reached.
+const API_PATH = /^\/(v1\/|api\/tags$|config$|clock$|clock\/advance$|records$|check-ins$|check-ins\/[^/]+$)/;
 
 export type ExampleServerOptions = {
   recordsPath: string;
@@ -63,13 +68,48 @@ async function readBody(req: IncomingMessage): Promise<Buffer> {
   return Buffer.concat(chunks);
 }
 
+function requireJson(req: IncomingMessage): void {
+  const type = (req.headers['content-type'] ?? '').split(';')[0]!.trim().toLowerCase();
+  if (type !== 'application/json') throw new HttpError(415, 'Send the body as application/json');
+}
+
 async function readJson(req: IncomingMessage): Promise<unknown> {
+  requireJson(req);
   const body = await readBody(req);
   try {
     return JSON.parse(body.toString('utf8'));
   } catch {
     throw new HttpError(400, 'Request body is not JSON');
   }
+}
+
+// The server listens on loopback only, so the caller to keep out is another web
+// page open in the same browser. It holds the log and can spend the API key.
+
+/**
+ * A page whose domain is re-pointed at 127.0.0.1 (DNS rebinding) counts as
+ * same-origin to the browser and could read the log. It still asks for its own
+ * name, so only a local name on this port is answered.
+ */
+export function isLocalHost(host: string | undefined, port: number): boolean {
+  if (!host) return false;
+  const at = host.lastIndexOf(':');
+  const name = at > host.lastIndexOf(']') ? host.slice(0, at) : host;
+  const asked = at > host.lastIndexOf(']') ? host.slice(at + 1) : '80';
+  return LOCAL_NAMES.has(name.toLowerCase()) && asked === String(port);
+}
+
+/**
+ * A page on another site can send a form-style request here without asking.
+ * The browser says where a request came from: Origin on every cross-origin
+ * request that can carry a body, Sec-Fetch-Site on all of them. Callers that
+ * send neither (the CLI, curl) are not pages.
+ */
+export function isSameOrigin(req: IncomingMessage): boolean {
+  const { origin, host } = req.headers;
+  if (origin !== undefined && origin !== `http://${host}`) return false;
+  const site = req.headers['sec-fetch-site'];
+  return site === undefined || site === 'same-origin' || site === 'none';
 }
 
 function send(res: ServerResponse, status: number, body?: unknown): void {
@@ -94,14 +134,16 @@ export async function startExampleServer(options: ExampleServerOptions): Promise
   let offsetMs = 0;
   const now = () => new Date(Date.now() + offsetMs);
 
-  async function proxy(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  async function proxy(req: IncomingMessage, res: ServerResponse, url: URL): Promise<void> {
+    if (req.method !== 'GET' && req.method !== 'POST') throw new HttpError(405, 'The model proxy takes GET and POST');
+    if (req.method === 'POST') requireJson(req);
     const body = req.method === 'GET' ? undefined : new Uint8Array(await readBody(req));
     let upstream: Response;
     try {
-      upstream = await fetch(options.modelUrl.replace(/\/+$/, '') + req.url, {
+      upstream = await fetch(options.modelUrl.replace(/\/+$/, '') + url.pathname + url.search, {
         method: req.method,
         headers: {
-          'content-type': req.headers['content-type'] ?? 'application/json',
+          'content-type': 'application/json',
           ...(options.apiKey ? { authorization: `Bearer ${options.apiKey}` } : {}),
         },
         body,
@@ -118,9 +160,11 @@ export async function startExampleServer(options: ExampleServerOptions): Promise
   async function api(req: IncomingMessage, res: ServerResponse, url: URL): Promise<boolean> {
     const { pathname } = url;
     const method = req.method ?? 'GET';
+    if (!API_PATH.test(pathname)) return false;
+    if (!isSameOrigin(req)) throw new HttpError(403, 'This server only answers its own page');
 
     if (pathname.startsWith('/v1/') || pathname === '/api/tags') {
-      await proxy(req, res);
+      await proxy(req, res, url);
       return true;
     }
     if (pathname === '/config' && method === 'GET') {
@@ -173,11 +217,17 @@ export async function startExampleServer(options: ExampleServerOptions): Promise
         root: HERE,
         appType: 'spa',
         logLevel: 'warn',
-        server: { middlewareMode: true, hmr: { server } },
+        // No CORS: nothing on another origin, local or not, has a reason to read this one.
+        // The log sits in this folder; it is read through GET /records, never as a file.
+        server: { middlewareMode: true, hmr: { server }, cors: false, fs: { deny: [...VITE_DENY, '**/records*.jsonl'] } },
       })
     : undefined;
 
   server.on('request', (req, res) => {
+    if (!isLocalHost(req.headers.host, (server.address() as AddressInfo).port)) {
+      send(res, 403, 'This server only answers on localhost');
+      return;
+    }
     const url = new URL(req.url ?? '/', 'http://localhost');
     api(req, res, url)
       .then((handled) => {

@@ -1,0 +1,7 @@
+# Actions are pinned to commits; this proposes the bump when a new release lands.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly

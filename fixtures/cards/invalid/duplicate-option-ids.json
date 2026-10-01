@@ -1,0 +1,78 @@
+{
+  "schema_version": "0.1",
+  "card_id": "card_7f3a91c2",
+  "kind": "decision",
+  "signal": {
+    "headline": "Supplier B's next delivery is likely to arrive after stock runs out",
+    "level": "high",
+    "confidence": 0.72
+  },
+  "evidence": [
+    {
+      "text": "Last four deliveries arrived 3 to 6 days late",
+      "basis": "data",
+      "ref": "ctx_14"
+    },
+    {
+      "text": "Current stock covers about 5 days at this week's sales rate",
+      "basis": "data",
+      "ref": "ctx_15"
+    },
+    {
+      "text": "Delays this long usually repeat for a few weeks",
+      "basis": "rule_of_thumb"
+    }
+  ],
+  "ask": {
+    "question": "Is there a backup supplier you could use this week?",
+    "kind": "chips",
+    "options": [
+      {
+        "id": "yes",
+        "label": "Yes"
+      },
+      {
+        "id": "no",
+        "label": "No"
+      },
+      {
+        "id": "not_sure",
+        "label": "Not sure"
+      }
+    ]
+  },
+  "choice": {
+    "options": [
+      {
+        "id": "reorder_backup",
+        "label": "Reorder from backup",
+        "rationale": "Covers the gap if B is late again"
+      },
+      {
+        "id": "reorder_backup",
+        "label": "Chase Supplier B",
+        "rationale": "Cheaper if B can confirm a date"
+      },
+      {
+        "id": "wait",
+        "label": "Wait"
+      }
+    ],
+    "recommended": "reorder_backup"
+  },
+  "check_in": {
+    "question": "Did you run out of stock before the next delivery?",
+    "due_in": "P7D",
+    "options": [
+      {
+        "id": "yes",
+        "label": "Yes"
+      },
+      {
+        "id": "no",
+        "label": "No"
+      }
+    ],
+    "confirms": "yes"
+  }
+}

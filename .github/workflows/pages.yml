@@ -1,0 +1,36 @@
+# Publishes the demo to GitHub Pages. Manual only: nothing deploys on push.
+# To go public: make the repository public, set Settings > Pages > Source to
+# "GitHub Actions", then run this workflow from the Actions tab.
+name: pages
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: true
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test
+      - run: pnpm demo:build
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: out/demo
+      - id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,7 @@
+{
+  "context": "Weekly stock review",
+  "who": "Store manager",
+  "what": "a supplier delivery that is likely to be late",
+  "what_changes": "reorders placed before stock runs out",
+  "by_how_much": "stock-outs down 20% in a quarter"
+}

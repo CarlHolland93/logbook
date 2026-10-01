@@ -1,0 +1,181 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://carlholland93.github.io/logbook/schema/0.1/record.schema.json",
+  "title": "Record",
+  "description": "One decision, from what the model was given to what happened. Written to an append-only JSONL file: every state transition appends a full snapshot of the record; consumers take the last line per record_id. This is the training set the product did not start with.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "record_id", "card_id", "status", "created_at", "updated_at", "input", "model", "shown"],
+  "properties": {
+    "schema_version": { "const": "0.1" },
+    "record_id": { "type": "string", "minLength": 8 },
+    "card_id": { "type": "string", "minLength": 8 },
+    "status": { "enum": ["shown", "answered", "chosen", "outcome_pending", "closed", "expired", "abandoned"] },
+    "created_at": { "type": "string", "format": "date-time" },
+    "updated_at": { "type": "string", "format": "date-time" },
+
+    "actor": {
+      "type": "object",
+      "description": "Who saw the card. Hashed ids only; never raw identifiers.",
+      "additionalProperties": false,
+      "properties": {
+        "user_hash": { "type": "string" },
+        "role": { "type": "string", "maxLength": 40 },
+        "session_id": { "type": "string" }
+      }
+    },
+
+    "input": {
+      "type": "object",
+      "description": "The full input snapshot. Not a reference: references go stale and cannot be backfilled. This is the field that makes the record trainable later.",
+      "additionalProperties": false,
+      "required": ["messages", "template_version", "card_schema_version", "sampling", "context_hash", "hypothesis"],
+      "properties": {
+        "messages": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["role", "content"],
+            "properties": {
+              "role": { "enum": ["system", "user", "assistant"] },
+              "content": { "type": "string" }
+            }
+          }
+        },
+        "template_version": { "type": "string", "description": "Version of the prompt template that produced `messages`." },
+        "card_schema_version": { "const": "0.1" },
+        "sampling": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["temperature"],
+          "properties": {
+            "temperature": { "type": "number", "minimum": 0 },
+            "top_p": { "type": "number", "minimum": 0, "maximum": 1 },
+            "seed": { "type": "integer" },
+            "max_tokens": { "type": "integer", "minimum": 1 }
+          }
+        },
+        "retrieval_ids": { "type": "array", "items": { "type": "string" }, "description": "Ids of retrieved items included in `messages`, so evidence.ref can be checked." },
+        "context_hash": { "type": "string", "description": "Hash of `messages`; lets you group records that saw the same situation." },
+        "hypothesis": {
+          "type": "object",
+          "description": "The bet this deployment is testing. Copied from hypothesis.json so each record knows what it is measuring.",
+          "additionalProperties": false,
+          "required": ["context", "who", "what", "what_changes", "by_how_much"],
+          "properties": {
+            "context": { "type": "string", "maxLength": 120 },
+            "who": { "type": "string", "maxLength": 60 },
+            "what": { "type": "string", "maxLength": 120 },
+            "what_changes": { "type": "string", "maxLength": 120 },
+            "by_how_much": { "type": "string", "maxLength": 60 }
+          }
+        }
+      }
+    },
+
+    "model": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "provider"],
+      "properties": {
+        "name": { "type": "string", "description": "As reported by the endpoint, e.g. the Ollama tag or vLLM served-model name." },
+        "version": { "type": "string", "description": "Digest or build id where the runtime exposes one." },
+        "provider": { "enum": ["openai_compatible", "mock"] },
+        "endpoint_hash": { "type": "string" }
+      }
+    },
+
+    "shown": {
+      "type": "object",
+      "description": "What the person actually saw.",
+      "additionalProperties": false,
+      "required": ["card", "highlight_shown", "at"],
+      "properties": {
+        "card": { "$ref": "https://carlholland93.github.io/logbook/schema/0.1/card.schema.json" },
+        "highlight_shown": { "type": "boolean", "description": "False for the holdout share of cards, where the recommended option is rendered without its highlight. Needed to separate preference from the nudge." },
+        "candidates": {
+          "type": "array",
+          "description": "Present only in candidates mode: the other sampled cards for the same input. Enables card-vs-card preference pairs.",
+          "minItems": 1,
+          "maxItems": 3,
+          "items": { "$ref": "https://carlholland93.github.io/logbook/schema/0.1/card.schema.json" }
+        },
+        "shown_index": { "type": "integer", "minimum": 0, "description": "Which candidate was rendered, when candidates mode is on." },
+        "repair": {
+          "type": "object",
+          "description": "Present when the model's first reply failed validation and it was asked once to fix it. `card` is the result of that second turn, whether it succeeded (a decision card) or not (prose). `input.messages` stays the original prompt.",
+          "additionalProperties": false,
+          "required": ["problems", "first_reply"],
+          "properties": {
+            "problems": { "type": "array", "minItems": 1, "items": { "type": "string" }, "description": "What was wrong with the first reply, as sent back to the model." },
+            "first_reply": { "type": "string", "description": "The model's first reply, verbatim." }
+          }
+        },
+        "latency_ms": { "type": "integer", "minimum": 0 },
+        "at": { "type": "string", "format": "date-time" }
+      }
+    },
+
+    "answered": {
+      "type": "object",
+      "description": "The person's answer to `ask`, if the card had one and they answered.",
+      "additionalProperties": false,
+      "required": ["kind", "at"],
+      "properties": {
+        "kind": { "enum": ["text", "chips", "skipped"] },
+        "text": { "type": "string", "maxLength": 500 },
+        "option_id": { "type": "string" },
+        "at": { "type": "string", "format": "date-time" }
+      }
+    },
+
+    "chose": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["option_id", "recommended_id", "agreed", "time_to_choose_ms", "at"],
+      "properties": {
+        "option_id": { "type": "string" },
+        "recommended_id": { "type": ["string", "null"], "description": "The model's recommendation, whether or not it was highlighted (see shown.highlight_shown)." },
+        "agreed": { "type": ["boolean", "null"], "description": "option_id === recommended_id. Null when the model had no recommendation." },
+        "override_reason": { "type": "string", "maxLength": 500, "description": "Collected through the Ask primitive when agreed is false. An override without a reason is one bit of information." },
+        "time_to_choose_ms": { "type": "integer", "minimum": 0, "description": "From shown.at to the tap. Fast agreement on a highlighted option is a weak signal." },
+        "evidence_expanded": { "type": "boolean", "description": "Whether the person opened the evidence before choosing, where the skin collapses it." },
+        "at": { "type": "string", "format": "date-time" }
+      }
+    },
+
+    "outcome": {
+      "type": "object",
+      "description": "What happened. Written first at outcome_pending with only `due_at`; `source` and `at` are added when the record closes or expires. `source` says how you know. `none` with status expired is a legitimate, and common, end state.",
+      "additionalProperties": false,
+      "required": ["due_at"],
+      "properties": {
+        "source": { "enum": ["self", "system", "none"] },
+        "option_id": { "type": "string", "description": "The check_in option chosen (self) or mapped from the system of record (system). `cant_tell` is always available." },
+        "value_text": { "type": "string", "maxLength": 500 },
+        "metric": {
+          "type": "object",
+          "description": "Optional system-of-record measurement tied to the hypothesis.",
+          "additionalProperties": false,
+          "required": ["name", "value"],
+          "properties": {
+            "name": { "type": "string", "maxLength": 60 },
+            "value": { "type": "number" },
+            "unit": { "type": "string", "maxLength": 20 }
+          }
+        },
+        "due_at": { "type": "string", "format": "date-time" },
+        "at": { "type": "string", "format": "date-time" }
+      }
+    }
+  },
+
+  "allOf": [
+    { "if": { "properties": { "status": { "const": "answered" } } }, "then": { "required": ["answered"] } },
+    { "if": { "properties": { "status": { "enum": ["chosen", "outcome_pending", "closed", "expired"] } } }, "then": { "required": ["chose"] } },
+    { "if": { "properties": { "status": { "const": "outcome_pending" } } }, "then": { "required": ["outcome"] } },
+    { "if": { "properties": { "status": { "enum": ["closed", "expired"] } } }, "then": { "required": ["outcome"], "properties": { "outcome": { "type": "object", "required": ["source", "at"] } } } }
+  ]
+}

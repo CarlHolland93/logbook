@@ -1,0 +1,136 @@
+{
+  "schema_version": "0.1",
+  "record_id": "rec_5d20a7e4",
+  "card_id": "card_7f3a91c2",
+  "status": "answered",
+  "created_at": "2026-09-30T09:00:00.000Z",
+  "updated_at": "2026-09-30T09:01:00.000Z",
+  "actor": {
+    "user_hash": "u_9c1e0f",
+    "role": "Store manager",
+    "session_id": "s_31ab"
+  },
+  "input": {
+    "messages": [
+      {
+        "role": "system",
+        "content": "You assemble one decision card. Cite ref for every data line."
+      },
+      {
+        "role": "user",
+        "content": "[ctx_14] Supplier B delivery delays: 3, 6, 4, 5 days.\n[ctx_15] Stock on hand: 5 days of cover."
+      }
+    ],
+    "template_version": "t1",
+    "card_schema_version": "0.1",
+    "sampling": {
+      "temperature": 0.2,
+      "seed": 7
+    },
+    "retrieval_ids": [
+      "ctx_14",
+      "ctx_15"
+    ],
+    "context_hash": "sha256:4b9f0c2e8a71d3e5",
+    "hypothesis": {
+      "context": "Weekly stock review",
+      "who": "Store manager",
+      "what": "a supplier delivery that is likely to be late",
+      "what_changes": "reorders placed before stock runs out",
+      "by_how_much": "stock-outs down 20% in a quarter"
+    }
+  },
+  "model": {
+    "name": "mock",
+    "version": "0.1",
+    "provider": "mock"
+  },
+  "shown": {
+    "card": {
+      "schema_version": "0.1",
+      "card_id": "card_7f3a91c2",
+      "kind": "decision",
+      "signal": {
+        "headline": "Supplier B's next delivery is likely to arrive after stock runs out",
+        "level": "high",
+        "confidence": 0.72
+      },
+      "evidence": [
+        {
+          "text": "Last four deliveries arrived 3 to 6 days late",
+          "basis": "data",
+          "ref": "ctx_14"
+        },
+        {
+          "text": "Current stock covers about 5 days at this week's sales rate",
+          "basis": "data",
+          "ref": "ctx_15"
+        },
+        {
+          "text": "Delays this long usually repeat for a few weeks",
+          "basis": "rule_of_thumb"
+        }
+      ],
+      "ask": {
+        "question": "Is there a backup supplier you could use this week?",
+        "kind": "chips",
+        "options": [
+          {
+            "id": "yes",
+            "label": "Yes"
+          },
+          {
+            "id": "no",
+            "label": "No"
+          },
+          {
+            "id": "not_sure",
+            "label": "Not sure"
+          }
+        ]
+      },
+      "choice": {
+        "options": [
+          {
+            "id": "reorder_backup",
+            "label": "Reorder from backup",
+            "rationale": "Covers the gap if B is late again"
+          },
+          {
+            "id": "chase_supplier",
+            "label": "Chase Supplier B",
+            "rationale": "Cheaper if B can confirm a date"
+          },
+          {
+            "id": "wait",
+            "label": "Wait"
+          }
+        ],
+        "recommended": "reorder_backup"
+      },
+      "check_in": {
+        "question": "Did you run out of stock before the next delivery?",
+        "due_in": "P7D",
+        "options": [
+          {
+            "id": "yes",
+            "label": "Yes"
+          },
+          {
+            "id": "no",
+            "label": "No"
+          }
+        ],
+        "confirms": "yes"
+      }
+    },
+    "highlight_shown": true,
+    "latency_ms": 840,
+    "at": "2026-09-30T09:00:00.000Z"
+  },
+  "answered": {
+    "kind": "chips",
+    "option_id": "no",
+    "at": "2026-09-30T09:01:00.000Z"
+  }
+}

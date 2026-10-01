@@ -1,0 +1,507 @@
+/*
+ * logbook default skin. Styles the headless primitives through their data-*
+ * attributes. A skin may restyle the rendering rules; it may not remove them
+ * (SPEC §5.3). The band widths below are checked against CONFIDENCE_BANDS by
+ * the tests, so change both together.
+ *
+ * The card is set like a short document, not a form: one surface, hairlines
+ * between its parts, quiet labels, and the options as a single list.
+ */
+
+[data-logbook='card'] {
+  --lb-surface: #fcfcfb;
+  --lb-raised: #f3f2ef;
+  --lb-ink: #0b0b0b;
+  --lb-ink-2: #52514e;
+  --lb-ink-3: #75746f;
+  --lb-line: #e2e1dc;
+  --lb-accent: #2a78d6;
+  --lb-accent-soft: #dbe8f8;
+  --lb-band: #52514e;
+  --lb-band-soft: #b5b4ae;
+  --lb-track: #e8e7e3;
+  --lb-danger: #b3261e;
+  --lb-radius: 14px;
+  --lb-gap: 18px;
+
+  color-scheme: light;
+  box-sizing: border-box;
+  max-width: 36rem;
+  padding: 18px;
+  border: 1px solid var(--lb-line);
+  border-radius: var(--lb-radius);
+  background: var(--lb-surface);
+  color: var(--lb-ink);
+  font: 15px/1.45 system-ui, -apple-system, 'Segoe UI', sans-serif;
+  display: grid;
+  gap: var(--lb-gap);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) [data-logbook='card'] {
+    --lb-surface: #1a1a19;
+    --lb-raised: #242422;
+    --lb-ink: #ffffff;
+    --lb-ink-2: #c3c2b7;
+    --lb-ink-3: #9a998f;
+    --lb-line: #383835;
+    --lb-accent: #3987e5;
+    --lb-accent-soft: #1d3350;
+    --lb-band: #c3c2b7;
+    --lb-band-soft: #6b6a64;
+    --lb-track: #2e2e2b;
+    --lb-danger: #f2877f;
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme='dark'] [data-logbook='card'] {
+  --lb-surface: #1a1a19;
+  --lb-raised: #242422;
+  --lb-ink: #ffffff;
+  --lb-ink-2: #c3c2b7;
+  --lb-ink-3: #9a998f;
+  --lb-line: #383835;
+  --lb-accent: #3987e5;
+  --lb-accent-soft: #1d3350;
+  --lb-band: #c3c2b7;
+  --lb-band-soft: #6b6a64;
+  --lb-track: #2e2e2b;
+  --lb-danger: #f2877f;
+  color-scheme: dark;
+}
+
+[data-logbook='card'] *,
+[data-logbook='card'] *::before,
+[data-logbook='card'] *::after {
+  box-sizing: inherit;
+}
+
+[data-logbook='card'] :is(h2, h3, p, ul) {
+  margin: 0;
+}
+
+[data-logbook='card'] button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  border: 1px solid var(--lb-line);
+  border-radius: 999px;
+  background: transparent;
+  padding: 6px 14px;
+  min-height: 36px;
+  transition:
+    background-color 0.14s ease,
+    border-color 0.14s ease,
+    transform 0.14s ease;
+}
+
+[data-logbook='card'] button:not(:disabled):hover {
+  background: var(--lb-raised);
+}
+
+[data-logbook='card'] button:not(:disabled):active {
+  transform: scale(0.98);
+}
+
+[data-logbook='card'] button:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+[data-logbook='card'] button:focus-visible,
+[data-logbook='card'] textarea:focus-visible {
+  outline: 2px solid var(--lb-accent);
+  outline-offset: 2px;
+}
+
+/* Quiet labels above each part. */
+[data-logbook='card'] [data-part='title'] {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--lb-ink-3);
+}
+
+/* 1 Signal: how sure, then what. */
+
+[data-logbook='signal'] {
+  display: grid;
+  gap: 8px;
+}
+
+[data-logbook='signal'] [data-part='headline'] {
+  font-size: 17px;
+  line-height: 1.35;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+}
+
+[data-logbook='signal'] [data-part='confidence'] {
+  order: -1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--lb-ink-3);
+  font-size: 12px;
+}
+
+/* Rule 3: a band, not a point. Solid up to the band, lighter across it. */
+[data-part='band'] {
+  position: relative;
+  display: block;
+  flex: 0 0 56px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--lb-track);
+  overflow: hidden;
+  animation: lb-reveal 0.5s ease-out;
+}
+
+[data-part='band-solid'],
+[data-part='band-range'] {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+}
+
+[data-part='band-solid'] {
+  left: 0;
+  background: var(--lb-band);
+}
+
+[data-part='band-range'] {
+  background: var(--lb-band-soft);
+}
+
+[data-level='low'] [data-part='band-solid'] { width: 0%; }
+[data-level='low'] [data-part='band-range'] { left: 0%; width: 40%; }
+[data-level='medium'] [data-part='band-solid'] { width: 30%; }
+[data-level='medium'] [data-part='band-range'] { left: 30%; width: 40%; }
+[data-level='high'] [data-part='band-solid'] { width: 60%; }
+[data-level='high'] [data-part='band-range'] { left: 60%; width: 40%; }
+
+@keyframes lb-reveal {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0);
+  }
+}
+
+/* 2 Evidence: a short timeline. Each reason is a node, joined to the next by a
+   line that draws in as the card appears. The node shows what the reason rests
+   on; rule 4 keeps the basis as visible text beside it too. */
+
+[data-logbook='evidence'],
+[data-logbook='choice'],
+[data-logbook='check-in'] {
+  display: grid;
+  gap: 10px;
+}
+
+[data-logbook='evidence'] ul {
+  list-style: none;
+  padding: 0;
+  display: grid;
+}
+
+[data-logbook='evidence'] li {
+  --lb-step: 170ms;
+  --lb-at: calc(var(--lb-i, 0) * var(--lb-step));
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px 16px;
+  align-items: baseline;
+  padding: 0 0 14px 24px;
+  font-size: 14px;
+}
+
+[data-logbook='evidence'] li:last-child {
+  padding-bottom: 0;
+}
+
+[data-logbook='evidence'] li:nth-child(2) { --lb-i: 1; }
+[data-logbook='evidence'] li:nth-child(3) { --lb-i: 2; }
+[data-logbook='evidence'] li:nth-child(4) { --lb-i: 3; }
+[data-logbook='evidence'] li:nth-child(5) { --lb-i: 4; }
+
+/* The node. Solid for data, a ring for a rule of thumb, dashed for unknown. */
+[data-logbook='evidence'] li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 5px;
+  width: 11px;
+  height: 11px;
+  border: 1.5px solid var(--lb-ink-3);
+  border-radius: 50%;
+  animation: lb-node 0.3s cubic-bezier(0.3, 1.4, 0.6, 1) both;
+  animation-delay: var(--lb-at);
+}
+
+[data-logbook='evidence'] li[data-basis='data']::before {
+  border-color: var(--lb-ink-2);
+  background: var(--lb-ink-2);
+}
+
+[data-logbook='evidence'] li[data-basis='you']::before {
+  border-color: var(--lb-accent);
+  background: var(--lb-accent);
+}
+
+[data-logbook='evidence'] li[data-basis='unknown']::before {
+  border-style: dashed;
+}
+
+/* The line to the next node, drawn after this node lands. */
+[data-logbook='evidence'] li:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  left: 5px;
+  top: 19px;
+  bottom: -2px;
+  width: 1.5px;
+  border-radius: 1px;
+  background: color-mix(in srgb, var(--lb-ink-3) 55%, transparent);
+  transform-origin: top;
+  animation: lb-draw 0.22s ease-out both;
+  animation-delay: calc(var(--lb-at) + 110ms);
+}
+
+[data-logbook='evidence'] li > span {
+  animation: lb-fade 0.3s ease-out both;
+  animation-delay: var(--lb-at);
+}
+
+[data-logbook='evidence'] [data-part='basis'] {
+  order: 2;
+  font-size: 12px;
+  color: var(--lb-ink-3);
+  white-space: nowrap;
+}
+
+@keyframes lb-node {
+  from {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+}
+
+@keyframes lb-draw {
+  from {
+    transform: scaleY(0);
+  }
+}
+
+@keyframes lb-fade {
+  from {
+    opacity: 0;
+    transform: translateX(-4px);
+  }
+}
+
+/* 3 Ask, and the override reason that reuses it: a question in the flow, not a form. */
+
+[data-logbook='ask'] {
+  display: grid;
+  gap: 10px;
+  padding-top: var(--lb-gap);
+  border-top: 1px solid var(--lb-line);
+}
+
+[data-logbook='ask'] [data-part='question'] {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+[data-logbook='ask'] [data-part='hint'] {
+  grid-column: 1 / -1;
+  margin-top: -6px;
+  font-size: 12px;
+  color: var(--lb-ink-3);
+}
+
+[data-logbook='ask'] [role='group'] {
+  display: grid;
+  gap: 10px;
+}
+
+/* The text answer and its buttons share a line. */
+[data-logbook='ask'] form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+}
+
+[data-logbook='ask'] form [data-part='question'] {
+  grid-column: 1 / -1;
+}
+
+[data-logbook='ask'] textarea {
+  font: inherit;
+  font-size: 16px; /* under 16px, iOS Safari zooms the page on focus */
+  color: inherit;
+  width: 100%;
+  height: 40px;
+  min-height: 40px;
+  resize: none;
+  padding: 7px 12px;
+  border: 1px solid var(--lb-line);
+  border-radius: 10px;
+  background: transparent;
+  transition: border-color 0.14s ease;
+}
+
+[data-logbook='ask'] textarea:hover,
+[data-logbook='ask'] textarea:focus {
+  border-color: var(--lb-ink-3);
+}
+
+[data-logbook='ask'] :is([data-part='chips'], [data-part='actions']) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+[data-logbook='card'] [data-part='skip'] {
+  border-color: transparent;
+  color: var(--lb-ink-3);
+}
+
+/* 4 Choice: one list. Rule 1: every option the same size and one tap away. */
+
+[data-logbook='choice'] [data-part='options'] {
+  display: grid;
+  grid-auto-rows: 1fr;
+  border: 1px solid var(--lb-line);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+[data-logbook='choice'] button {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    'label tag'
+    'why tag';
+  gap: 1px 16px;
+  align-content: center;
+  align-items: center;
+  width: 100%;
+  min-height: 52px;
+  padding: 10px 14px;
+  border: 0;
+  border-radius: 0;
+  text-align: left;
+}
+
+[data-logbook='choice'] button + button {
+  border-top: 1px solid var(--lb-line);
+}
+
+[data-logbook='choice'] button:not(:disabled):active {
+  transform: none;
+}
+
+[data-logbook='choice'] [data-part='label'] {
+  grid-area: label;
+  font-weight: 500;
+}
+
+[data-logbook='choice'] [data-part='rationale'] {
+  grid-area: why;
+  font-size: 13px;
+  color: var(--lb-ink-2);
+}
+
+[data-logbook='choice'] [data-part='recommended'] {
+  grid-area: tag;
+  font-size: 12px;
+  color: var(--lb-accent);
+}
+
+/* The highlight: a tint and an edge, the same size as every other option. */
+[data-logbook='choice'] button[data-highlighted] {
+  background: var(--lb-accent-soft);
+  box-shadow: inset 2px 0 0 var(--lb-accent);
+}
+
+[data-logbook='choice'] button[data-chosen] {
+  opacity: 1;
+  background: var(--lb-raised);
+  box-shadow: inset 2px 0 0 var(--lb-ink);
+}
+
+[data-logbook='choice'] button[data-chosen] [data-part='label']::after {
+  content: '  ✓';
+}
+
+/* 5 Check-in */
+
+[data-logbook='check-in'] {
+  padding-top: var(--lb-gap);
+  border-top: 1px solid var(--lb-line);
+}
+
+[data-logbook='check-in'] [data-part='question'] {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+[data-logbook='check-in'] [data-part='options'] {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* Prose fallback. Rule 7: visibly a fallback. */
+
+[data-logbook='prose'] {
+  display: grid;
+  gap: 10px;
+}
+
+[data-logbook='prose'] [data-part='note'] {
+  font-size: 13px;
+  color: var(--lb-ink-2);
+}
+
+[data-logbook='prose'] [data-part='note']::before {
+  content: '⚠ ';
+}
+
+[data-logbook='prose'] button {
+  justify-self: start;
+}
+
+/* Loop status */
+
+[data-logbook='composing'],
+[data-logbook='status'] {
+  font-size: 13px;
+  color: var(--lb-ink-2);
+}
+
+[data-logbook='error'] {
+  font-size: 13px;
+  color: var(--lb-danger);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-logbook='card'] button,
+  [data-logbook='ask'] textarea {
+    transition: none;
+  }
+
+  [data-part='band'],
+  [data-logbook='evidence'] li::before,
+  [data-logbook='evidence'] li::after,
+  [data-logbook='evidence'] li > span {
+    animation: none;
+  }
+}

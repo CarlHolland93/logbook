@@ -1,0 +1,9 @@
+{
+  "schema_version": "0.1",
+  "card_id": "card_0b44e8d1",
+  "kind": "prose",
+  "prose": {
+    "text": "Supplier B has been late on recent deliveries and stock is low.",
+    "reason": "schema_violation"
+  }
+}

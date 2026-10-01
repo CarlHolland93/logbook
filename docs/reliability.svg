@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="440" viewBox="0 0 720 440" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif">
+<rect width="720" height="440" fill="#fcfcfb"/>
+<text x="56" y="28" fill="#0b0b0b" font-size="15" font-weight="600">Confidence against what happened</text>
+<text x="56" y="46" fill="#52514e" font-size="12">200 decision cards in 200 records. Dotted line is perfect calibration. Rates from fewer than 5 cases are not drawn.</text>
+<line x1="56" x2="530" y1="376" y2="376" stroke="#e6e5e1" stroke-width="1"/>
+<text x="48" y="380" text-anchor="end" fill="#52514e" font-size="11">0%</text>
+<line x1="56" x2="530" y1="305" y2="305" stroke="#e6e5e1" stroke-width="1"/>
+<text x="48" y="309" text-anchor="end" fill="#52514e" font-size="11">25%</text>
+<line x1="56" x2="530" y1="234" y2="234" stroke="#e6e5e1" stroke-width="1"/>
+<text x="48" y="238" text-anchor="end" fill="#52514e" font-size="11">50%</text>
+<line x1="56" x2="530" y1="163" y2="163" stroke="#e6e5e1" stroke-width="1"/>
+<text x="48" y="167" text-anchor="end" fill="#52514e" font-size="11">75%</text>
+<line x1="56" x2="530" y1="92" y2="92" stroke="#e6e5e1" stroke-width="1"/>
+<text x="48" y="96" text-anchor="end" fill="#52514e" font-size="11">100%</text>
+<line x1="56" x2="530" y1="376" y2="92" stroke="#b5b4ae" stroke-width="1" stroke-dasharray="3 4"/>
+<line x1="56" x2="530" y1="376" y2="376" stroke="#b5b4ae" stroke-width="1"/>
+<text x="103.4" y="394" text-anchor="middle" fill="#52514e" font-size="11">0.0 to 0.2</text>
+<text x="103.4" y="408" text-anchor="middle" fill="#8a8985" font-size="10">n=34</text>
+<text x="198.20000000000002" y="394" text-anchor="middle" fill="#52514e" font-size="11">0.2 to 0.4</text>
+<text x="198.20000000000002" y="408" text-anchor="middle" fill="#8a8985" font-size="10">n=43</text>
+<text x="293" y="394" text-anchor="middle" fill="#52514e" font-size="11">0.4 to 0.6</text>
+<text x="293" y="408" text-anchor="middle" fill="#8a8985" font-size="10">n=48</text>
+<text x="387.79999999999995" y="394" text-anchor="middle" fill="#52514e" font-size="11">0.6 to 0.8</text>
+<text x="387.79999999999995" y="408" text-anchor="middle" fill="#8a8985" font-size="10">n=45</text>
+<text x="482.6" y="394" text-anchor="middle" fill="#52514e" font-size="11">0.8 to 1.0</text>
+<text x="482.6" y="408" text-anchor="middle" fill="#8a8985" font-size="10">n=30</text>
+<text x="293" y="428" text-anchor="middle" fill="#52514e" font-size="11">Model confidence</text>
+<path d="M103.4,338.1 L198.2,335.4 L293.0,198.5 L387.8,171.5 L482.6,155.1" fill="none" stroke="#2a78d6" stroke-width="2" stroke-linejoin="round"/>
+<circle cx="103.4" cy="338.1" r="4" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"/>
+<circle cx="198.2" cy="335.4" r="4" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"/>
+<circle cx="293.0" cy="198.5" r="4" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"/>
+<circle cx="387.8" cy="171.5" r="4" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"/>
+<circle cx="482.6" cy="155.1" r="4" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"/>
+<text x="492.6" y="159.1" fill="#0b0b0b" font-size="11">Signal confirmed at check-in</text>
+<path d="M103.4,269.5 L198.2,203.9 L293.0,192.8 L387.8,170.3 L482.6,126.1" fill="none" stroke="#eb6834" stroke-width="2" stroke-linejoin="round"/>
+<circle cx="103.4" cy="269.5" r="4" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"/>
+<circle cx="198.2" cy="203.9" r="4" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"/>
+<circle cx="293.0" cy="192.8" r="4" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"/>
+<circle cx="387.8" cy="170.3" r="4" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"/>
+<circle cx="482.6" cy="126.1" r="4" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"/>
+<text x="492.6" y="130.1" fill="#0b0b0b" font-size="11">Agreed, highlight shown</text>
+<path d="M387.8,213.7" fill="none" stroke="#1baf7a" stroke-width="2" stroke-linejoin="round"/>
+<circle cx="387.8" cy="213.7" r="4" fill="#1baf7a" stroke="#fcfcfb" stroke-width="2"/>
+<text x="397.8" y="217.7" fill="#0b0b0b" font-size="11">Agreed, holdout</text>
+<rect x="56" y="62" width="12" height="12" rx="2" fill="#2a78d6"/>
+<text x="74" y="72" fill="#0b0b0b" font-size="11">Signal confirmed at check-in</text>
+<rect x="267.6" y="62" width="12" height="12" rx="2" fill="#eb6834"/>
+<text x="285.6" y="72" fill="#0b0b0b" font-size="11">Agreed, highlight shown</text>
+<rect x="448.20000000000005" y="62" width="12" height="12" rx="2" fill="#1baf7a"/>
+<text x="466.20000000000005" y="72" fill="#0b0b0b" font-size="11">Agreed, holdout</text>
+</svg>

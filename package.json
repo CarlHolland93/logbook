@@ -1,6 +1,6 @@
 {
   "name": "logbook",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "description": "No training set? Let behaviour build one.",
   "license": "MIT",

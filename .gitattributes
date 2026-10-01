@@ -1,0 +1,3 @@
+# GitHub's Languages bar leaves JSON out as data. The two schemas are the
+# project's contract, so they are counted; fixtures and config are not.
+schema/*.json linguist-detectable
